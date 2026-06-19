@@ -6,6 +6,7 @@ import '../../../core/providers.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../data/auth_repository.dart';
 import '../domain/app_user.dart';
+import '../domain/role.dart';
 
 /// Authentication state: the signed-in user (or null), plus loading/error.
 class AuthState {
@@ -57,7 +58,11 @@ class AuthController extends StateNotifier<AuthState> {
       return;
     }
     final user = await _repo.getById(id);
-    state = state.copyWith(user: user, isRestoring: false, clearUser: user == null);
+    state = state.copyWith(
+      user: user,
+      isRestoring: false,
+      clearUser: user == null,
+    );
   }
 
   Future<bool> login(String username, String password) async {
@@ -72,9 +77,27 @@ class AuthController extends StateNotifier<AuthState> {
       return false;
     } catch (_) {
       state = state.copyWith(
-          isLoading: false, error: 'Something went wrong. Please try again.');
+        isLoading: false,
+        error: 'Something went wrong. Please try again.',
+      );
       return false;
     }
+  }
+
+  /// Updates the signed-in user's name (and optionally password), then
+  /// refreshes the in-memory session so the UI reflects the new name.
+  Future<void> updateProfile({
+    required String fullName,
+    String password = '',
+  }) async {
+    final current = state.user;
+    if (current == null) return;
+    final updated = await _repo.updateProfile(
+      id: current.id,
+      fullName: fullName,
+      password: password,
+    );
+    state = state.copyWith(user: updated);
   }
 
   Future<void> logout() async {
@@ -83,13 +106,14 @@ class AuthController extends StateNotifier<AuthState> {
   }
 }
 
-final authControllerProvider =
-    StateNotifierProvider<AuthController, AuthState>((ref) {
-  return AuthController(
-    ref.watch(authRepositoryProvider),
-    ref.watch(sharedPreferencesProvider),
-  );
-});
+final authControllerProvider = StateNotifierProvider<AuthController, AuthState>(
+  (ref) {
+    return AuthController(
+      ref.watch(authRepositoryProvider),
+      ref.watch(sharedPreferencesProvider),
+    );
+  },
+);
 
 /// Convenience accessor for the current user.
 final currentUserProvider = Provider<AppUser?>(
@@ -101,4 +125,9 @@ final usersProvider = FutureProvider<List<AppUser>>((ref) {
   // Re-read whenever the signed-in user changes (e.g. after creating one).
   ref.watch(authControllerProvider);
   return ref.watch(authRepositoryProvider).getAll();
+});
+
+/// All roles (admin role-management screen and the add-user dropdown).
+final rolesProvider = FutureProvider<List<Role>>((ref) {
+  return ref.watch(authRepositoryProvider).getRoles();
 });
