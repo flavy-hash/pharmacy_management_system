@@ -1,7 +1,6 @@
-import '../../../core/constants/app_constants.dart';
-import '../../../core/database/app_database.dart';
-import '../../../core/utils/password_hasher.dart';
+import '../../../core/api/api_client.dart';
 import '../domain/app_user.dart';
+import '../domain/role.dart';
 
 class AuthException implements Exception {
   AuthException(this.message);
@@ -10,81 +9,134 @@ class AuthException implements Exception {
   String toString() => message;
 }
 
-/// Data access and credential checks for the `users` table.
+/// Talks to the `auth.php` and `roles.php` endpoints for credential checks,
+/// user management and role management.
+///
+/// Passwords are verified server-side (bcrypt); the client never sees the hash.
 class AuthRepository {
-  AuthRepository(this._db);
+  AuthRepository(this._api);
 
-  final AppDatabase _db;
+  final ApiClient _api;
 
   /// Verifies credentials and returns the matching user, or throws
-  /// [AuthException] on failure.
+  /// [AuthException] on failure (bad username/password or a network error).
   Future<AppUser> login(String username, String password) async {
-    final db = await _db.database;
-    final rows = await db.query(
-      'users',
-      where: 'username = ?',
-      whereArgs: [username.trim().toLowerCase()],
-      limit: 1,
-    );
-    if (rows.isEmpty) {
-      throw AuthException('No account found for "$username".');
+    try {
+      final data = await _api.post('auth.php?action=login', {
+        'username': username.trim(),
+        'password': password,
+      });
+      return AppUser.fromMap(Map<String, Object?>.from(data as Map));
+    } on ApiException catch (e) {
+      throw AuthException(e.message);
     }
-    final row = rows.first;
-    final ok = PasswordHasher.verify(
-      password,
-      row['salt'] as String,
-      row['password_hash'] as String,
-    );
-    if (!ok) throw AuthException('Incorrect password. Please try again.');
-    return AppUser.fromMap(row);
   }
 
   Future<AppUser?> getById(String id) async {
-    final db = await _db.database;
-    final rows =
-        await db.query('users', where: 'id = ?', whereArgs: [id], limit: 1);
-    if (rows.isEmpty) return null;
-    return AppUser.fromMap(rows.first);
+    try {
+      final data = await _api.get('auth.php', {'action': 'get', 'id': id});
+      if (data == null) return null;
+      return AppUser.fromMap(Map<String, Object?>.from(data as Map));
+    } on ApiException catch (e) {
+      if (e.statusCode == 404) return null;
+      rethrow;
+    }
   }
 
   Future<List<AppUser>> getAll() async {
-    final db = await _db.database;
-    final rows = await db.query('users', orderBy: 'created_at ASC');
-    return rows.map(AppUser.fromMap).toList();
+    final data = await _api.get('auth.php', {'action': 'list'});
+    return (data as List)
+        .map((e) => AppUser.fromMap(Map<String, Object?>.from(e as Map)))
+        .toList();
   }
 
-  /// Creates a new user (admin-only operation in the UI).
+  /// Creates a new user with the given role name (admin-only operation).
   Future<AppUser> createUser({
     required String username,
     required String fullName,
     required String password,
-    required UserRole role,
+    required String role,
   }) async {
-    final db = await _db.database;
-    final normalised = username.trim().toLowerCase();
-    final existing = await db.query('users',
-        where: 'username = ?', whereArgs: [normalised], limit: 1);
-    if (existing.isNotEmpty) {
-      throw AuthException('Username "$username" is already taken.');
+    try {
+      final data = await _api.post('auth.php?action=create', {
+        'username': username.trim(),
+        'full_name': fullName.trim(),
+        'password': password,
+        'role': role,
+      });
+      return AppUser.fromMap(Map<String, Object?>.from(data as Map));
+    } on ApiException catch (e) {
+      throw AuthException(e.message);
     }
-    final salt = PasswordHasher.generateSalt();
-    final id = AppDatabase.newId();
-    final now = DateTime.now();
-    await db.insert('users', {
-      'id': id,
-      'username': normalised,
-      'full_name': fullName.trim(),
-      'password_hash': PasswordHasher.hash(password, salt),
-      'salt': salt,
-      'role': role.storageValue,
-      'created_at': now.toIso8601String(),
-    });
-    return AppUser(
-      id: id,
-      username: normalised,
-      fullName: fullName.trim(),
-      role: role,
-      createdAt: now,
-    );
+  }
+
+  /// Deletes a user. [requesterId] is the signed-in admin's id — the server
+  /// refuses to let an admin delete their own account.
+  Future<void> deleteUser({
+    required String id,
+    required String requesterId,
+  }) async {
+    try {
+      await _api.post('auth.php?action=delete', {
+        'id': id,
+        'requester_id': requesterId,
+      });
+    } on ApiException catch (e) {
+      throw AuthException(e.message);
+    }
+  }
+
+  /// Updates the current user's display name and, optionally, password.
+  /// Pass a non-empty [password] to change it; leave it empty to keep the
+  /// existing one.
+  Future<AppUser> updateProfile({
+    required String id,
+    required String fullName,
+    String password = '',
+  }) async {
+    try {
+      final data = await _api.post('auth.php?action=update_profile', {
+        'id': id,
+        'full_name': fullName.trim(),
+        'password': password,
+      });
+      return AppUser.fromMap(Map<String, Object?>.from(data as Map));
+    } on ApiException catch (e) {
+      throw AuthException(e.message);
+    }
+  }
+
+  // --- Roles ---
+
+  Future<List<Role>> getRoles() async {
+    final data = await _api.get('roles.php', {'action': 'list'});
+    return (data as List)
+        .map((e) => Role.fromMap(Map<String, Object?>.from(e as Map)))
+        .toList();
+  }
+
+  Future<Role> createRole({
+    required String name,
+    required bool isAdmin,
+    required Set<String> permissions,
+  }) async {
+    try {
+      final data = await _api.post('roles.php?action=create', {
+        'name': name.trim(),
+        'is_admin': isAdmin,
+        'permissions': permissions.toList(),
+      });
+      return Role.fromMap(Map<String, Object?>.from(data as Map));
+    } on ApiException catch (e) {
+      throw AuthException(e.message);
+    }
+  }
+
+  Future<void> deleteRole(String id) async {
+    try {
+      await _api.post('roles.php?action=delete', {'id': id});
+    } on ApiException catch (e) {
+      throw AuthException(e.message);
+    }
   }
 }
