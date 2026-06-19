@@ -5,6 +5,10 @@ class AppConstants {
   static const String appName = 'PharmaCare';
   static const String appTagline = 'Pharmacy Management System';
 
+  /// Base URL of the PHP/MySQL backend served by XAMPP (Apache on port 80).
+  /// The `backend/` folder of this project is copied to `htdocs/pharmacy_api`.
+  static const String apiBaseUrl = 'http://localhost/pharmacy_api';
+
   /// Currency used throughout the app. Tanzanian Shilling by default to match
   /// the supported mobile-money providers (M-Pesa, Tigo Pesa, Airtel Money).
   static const String currencySymbol = 'TSh';
@@ -39,36 +43,19 @@ class AppConstants {
   static const String prefSessionUserId = 'pref_session_user_id';
 }
 
-/// User roles for role-based access control.
-enum UserRole { admin, pharmacist }
-
-extension UserRoleX on UserRole {
-  String get label => switch (this) {
-        UserRole.admin => 'Administrator',
-        UserRole.pharmacist => 'Pharmacist',
-      };
-
-  String get storageValue => name;
-
-  static UserRole fromStorage(String value) =>
-      UserRole.values.firstWhere((r) => r.name == value,
-          orElse: () => UserRole.pharmacist);
-}
-
 /// Supported payment methods.
 enum PaymentMethod { cash, card, mobileMoney, bankTransfer }
 
 extension PaymentMethodX on PaymentMethod {
   String get label => switch (this) {
-        PaymentMethod.cash => 'Cash',
-        PaymentMethod.card => 'Credit/Debit Card',
-        PaymentMethod.mobileMoney => 'Mobile Money',
-        PaymentMethod.bankTransfer => 'Bank Transfer',
-      };
+    PaymentMethod.cash => 'Cash',
+    PaymentMethod.card => 'Credit/Debit Card',
+    PaymentMethod.mobileMoney => 'Mobile Money',
+    PaymentMethod.bankTransfer => 'Bank Transfer',
+  };
 
   String get storageValue => name;
 
-  static PaymentMethod fromStorage(String value) =>
-      PaymentMethod.values.firstWhere((m) => m.name == value,
-          orElse: () => PaymentMethod.cash);
+  static PaymentMethod fromStorage(String value) => PaymentMethod.values
+      .firstWhere((m) => m.name == value, orElse: () => PaymentMethod.cash);
 }
