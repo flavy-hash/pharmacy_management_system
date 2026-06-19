@@ -27,10 +27,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
-    await ref.read(authControllerProvider.notifier).login(
-          _usernameController.text,
-          _passwordController.text,
-        );
+    await ref
+        .read(authControllerProvider.notifier)
+        .login(_usernameController.text, _passwordController.text);
   }
 
   void _fillDemo(String user, String pass) {
@@ -63,22 +62,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         color: theme.colorScheme.primaryContainer,
                         borderRadius: BorderRadius.circular(24),
                       ),
-                      child: Icon(Icons.local_pharmacy_rounded,
-                          size: 48, color: theme.colorScheme.onPrimaryContainer),
+                      child: Icon(
+                        Icons.local_pharmacy_rounded,
+                        size: 48,
+                        color: theme.colorScheme.onPrimaryContainer,
+                      ),
                     ),
                     const SizedBox(height: 24),
                     Text(
                       AppConstants.appName,
                       textAlign: TextAlign.center,
-                      style: theme.textTheme.headlineMedium
-                          ?.copyWith(fontWeight: FontWeight.w800),
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       AppConstants.appTagline,
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant),
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                     const SizedBox(height: 36),
                     TextFormField(
@@ -102,9 +106,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         labelText: 'Password',
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscure
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined),
+                          icon: Icon(
+                            _obscure
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
                           onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),
@@ -122,15 +128,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.error_outline,
-                                color: theme.colorScheme.onErrorContainer,
-                                size: 20),
+                            Icon(
+                              Icons.error_outline,
+                              color: theme.colorScheme.onErrorContainer,
+                              size: 20,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 state.error!,
                                 style: TextStyle(
-                                    color: theme.colorScheme.onErrorContainer),
+                                  color: theme.colorScheme.onErrorContainer,
+                                ),
                               ),
                             ),
                           ],
@@ -144,7 +153,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ? const SizedBox(
                               height: 22,
                               width: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2.5),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                              ),
                             )
                           : const Text('Sign In'),
                     ),
@@ -178,15 +189,20 @@ class _DemoCredentials extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Demo accounts (tap to fill)',
-              style: theme.textTheme.labelLarge),
+          Text(
+            'Demo accounts (tap to fill)',
+            style: theme.textTheme.labelLarge,
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               ActionChip(
-                avatar: const Icon(Icons.admin_panel_settings_outlined, size: 18),
+                avatar: const Icon(
+                  Icons.admin_panel_settings_outlined,
+                  size: 18,
+                ),
                 label: const Text('admin / admin123'),
                 onPressed: () => onPick('admin', 'admin123'),
               ),
